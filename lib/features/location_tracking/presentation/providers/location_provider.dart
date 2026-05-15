@@ -97,6 +97,8 @@ class LocationProvider extends ChangeNotifier {
   Future<void> checkAndRequestPermissions() async {
     final granted = await PermissionService.requestLocationPermission();
 
+    print("granted: $granted");
+
     hasPermission = granted;
 
     // Combine all "permanently denied" states properly

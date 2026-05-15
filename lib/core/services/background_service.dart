@@ -12,7 +12,7 @@ class BackgroundServiceHandler {
     await service.configure(
       androidConfiguration: AndroidConfiguration(
         onStart: onStart,
-        autoStart: false,
+        autoStart: true,
         isForegroundMode: true,
         foregroundServiceNotificationId: 1001,
         initialNotificationTitle: 'Location Tracking Active',
