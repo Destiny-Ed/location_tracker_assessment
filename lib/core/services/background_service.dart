@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:location_tracker_assessment/features/location_tracking/data/repositories/location_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
@@ -48,7 +48,7 @@ class BackgroundServiceHandler {
 
     Timer.periodic(const Duration(minutes: 1), (timer) async {
       try {
-        final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+        final position = await LocationRepository.getCurrentLocation();
 
         if (service is AndroidServiceInstance) {
           service.setForegroundNotificationInfo(

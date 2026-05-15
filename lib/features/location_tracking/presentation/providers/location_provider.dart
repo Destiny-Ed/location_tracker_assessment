@@ -7,12 +7,13 @@ import 'package:location_tracker_assessment/core/services/permission_service.dar
 import 'package:location_tracker_assessment/core/services/storage_service.dart';
 import 'package:location_tracker_assessment/core/utils/date_formatter.dart';
 import 'package:location_tracker_assessment/features/location_tracking/data/models/location_model.dart';
+import 'package:location_tracker_assessment/features/location_tracking/data/repositories/location_repository.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class LocationProvider extends ChangeNotifier {
   Position? currentPosition;
 
-  bool isTracking = false;
+  bool isTrackingEnabled = false;
 
   bool isLoading = true;
 
@@ -35,7 +36,7 @@ class LocationProvider extends ChangeNotifier {
 
     logs = await StorageService.getLogs();
 
-    isTracking = await StorageService.getTrackingState();
+    isTrackingEnabled = await StorageService.getTrackingState();
 
     await checkAndRequestPermissions();
 
@@ -56,7 +57,7 @@ class LocationProvider extends ChangeNotifier {
     }
 
     try {
-      currentPosition = await Geolocator.getCurrentPosition();
+      currentPosition = await LocationRepository.getCurrentLocation();
 
       //Log the initial position when the app starts
       final log = LocationLogModel(
@@ -86,7 +87,7 @@ class LocationProvider extends ChangeNotifier {
       service.invoke('stopService');
     }
 
-    isTracking = value;
+    isTrackingEnabled = value;
 
     await StorageService.saveTrackingState(value);
 
@@ -98,9 +99,14 @@ class LocationProvider extends ChangeNotifier {
 
     hasPermission = granted;
 
-    final status = await Permission.location.status;
+    // Combine all "permanently denied" states properly
+    final locationDenied = await PermissionService.isLocationPermanentlyDenied();
 
-    permissionDeniedForever = status.isPermanentlyDenied;
+    final backgroundDenied = await PermissionService.isBackgroundPermanentlyDenied();
+
+    final notificationDenied = await PermissionService.isNotificationPermanentlyDenied();
+
+    permissionDeniedForever = locationDenied || backgroundDenied || notificationDenied;
 
     notifyListeners();
   }
@@ -146,7 +152,7 @@ class LocationProvider extends ChangeNotifier {
 
         logs.insert(0, log);
 
-        // Optional: Prevent huge local storage growth
+        // Prevent huge local storage growth
         if (logs.length > 500) {
           logs = logs.take(500).toList();
         }
@@ -164,6 +170,7 @@ class LocationProvider extends ChangeNotifier {
     await openAppSettings();
   }
 
+  //Log grouping logic for the UI
   Map<String, List<LocationLogModel>> groupLogsByDate(List<LocationLogModel> logs) {
     final Map<String, List<LocationLogModel>> grouped = {};
 
