@@ -1,8 +1,10 @@
 import 'dart:async';
-
+import 'dart:developer';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+@pragma('vm:entry-point')
 class BackgroundServiceHandler {
   static Future<void> initializeService() async {
     final service = FlutterBackgroundService();
@@ -10,22 +12,61 @@ class BackgroundServiceHandler {
     await service.configure(
       androidConfiguration: AndroidConfiguration(
         onStart: onStart,
-        isForegroundMode: true,
         autoStart: false,
+        isForegroundMode: true,
         foregroundServiceNotificationId: 1001,
-        initialNotificationTitle: 'Location Tracking',
-        initialNotificationContent: 'Tracking active...',
+        initialNotificationTitle: 'Location Tracking Active',
+        initialNotificationContent: 'Preparing service...',
       ),
       iosConfiguration: IosConfiguration(),
     );
   }
 
   @pragma('vm:entry-point')
-  static void onStart(ServiceInstance service) {
-    Timer.periodic(const Duration(seconds: 15), (timer) async {
-      final position = await Geolocator.getCurrentPosition();
+  static void onStart(ServiceInstance service) async {
+    final prefs = await SharedPreferences.getInstance();
+    final isTracking = prefs.getBool('tracking_enabled') ?? false;
 
-      service.invoke('location_update', {'lat': position.latitude, 'lng': position.longitude});
+    if (!isTracking) {
+      service.stopSelf();
+      return;
+    }
+
+    if (service is AndroidServiceInstance) {
+      service.setAsForegroundService();
+
+      service.setForegroundNotificationInfo(
+        title: "Location Tracker Active",
+        content: "Initializing location service...",
+      );
+    }
+
+    service.on('stopService').listen((event) async {
+      await prefs.setBool('tracking_enabled', false);
+      service.stopSelf();
+    });
+
+    Timer.periodic(const Duration(seconds: 15), (timer) async {
+      try {
+        final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+
+        if (service is AndroidServiceInstance) {
+          service.setForegroundNotificationInfo(
+            title: "Tracking Location 📍",
+            content:
+                "Lat: ${position.latitude.toStringAsFixed(5)} | Lng: ${position.longitude.toStringAsFixed(5)}",
+          );
+        }
+
+        service.invoke('location_update', {
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'timestamp': DateTime.now().toIso8601String(),
+          'source': 'background',
+        });
+      } catch (e) {
+        log("Background error: $e");
+      }
     });
   }
 }
