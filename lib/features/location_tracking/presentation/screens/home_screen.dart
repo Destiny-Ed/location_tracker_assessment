@@ -118,7 +118,7 @@ class HomeScreen extends StatelessWidget {
                       value: provider.isTracking,
                       onChanged: provider.toggleTracking,
                       title: const Text('Enable Background Tracking'),
-                      subtitle: const Text('Tracks every 15 seconds'),
+                      subtitle: const Text('Tracks every 1 minute'),
                     ),
 
                     const SizedBox(height: 20),

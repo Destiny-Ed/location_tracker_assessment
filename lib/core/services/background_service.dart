@@ -46,7 +46,7 @@ class BackgroundServiceHandler {
       service.stopSelf();
     });
 
-    Timer.periodic(const Duration(seconds: 15), (timer) async {
+    Timer.periodic(const Duration(minutes: 1), (timer) async {
       try {
         final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
 
